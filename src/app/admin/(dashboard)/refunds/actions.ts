@@ -29,6 +29,28 @@ export async function approveRefund(
     return { error: "This order has no payment on file to refund against." };
   }
 
+  // Guard: never Stripe-refund an item that already has an APPROVED request
+  // (defends pre-migration duplicates; unique index prevents new ones).
+  if (refundRequest.orderItemId) {
+    const alreadyApproved = await prisma.refundRequest.findFirst({
+      where: {
+        orderItemId: refundRequest.orderItemId,
+        status: "APPROVED",
+        id: { not: refundRequestId },
+      },
+    });
+    if (alreadyApproved) {
+      await prisma.refundRequest.updateMany({
+        where: { id: refundRequestId, status: "REQUESTED" },
+        data: {
+          status: "DENIED",
+          adminNote: "Duplicate of an already-approved refund for this item.",
+        },
+      });
+      return { error: "A refund was already approved for this item." };
+    }
+  }
+
   // Claim the request atomically before calling Stripe, so two concurrent
   // approvals (double-click, two admin tabs) can't both trigger a refund.
   const claimed = await prisma.refundRequest.updateMany({
@@ -36,6 +58,21 @@ export async function approveRefund(
     data: { status: "APPROVED" },
   });
   if (claimed.count === 0) return {};
+
+  // Close any leftover REQUESTED siblings for the same line item (no Stripe).
+  if (refundRequest.orderItemId) {
+    await prisma.refundRequest.updateMany({
+      where: {
+        orderItemId: refundRequest.orderItemId,
+        status: "REQUESTED",
+        id: { not: refundRequestId },
+      },
+      data: {
+        status: "DENIED",
+        adminNote: "Superseded by approved refund for the same item.",
+      },
+    });
+  }
 
   let stripeRefundId: string;
   try {
