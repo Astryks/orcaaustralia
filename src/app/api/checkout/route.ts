@@ -6,15 +6,21 @@ import { FLAT_SHIPPING_CENTS, FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/consta
 import { encodeHeldItems, holdAllOrRollback, releaseAll, type HeldItem } from "@/lib/stockHold";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
+/** Max distinct / raw checkout lines — also keeps Stripe heldItems metadata ≤500 chars. */
+const MAX_CHECKOUT_LINES = 20;
+/** Stripe metadata value limit; leave headroom for cuid:qty encoding. */
+const MAX_HELD_ITEMS_METADATA_CHARS = 500;
+
 const bodySchema = z.object({
   items: z
     .array(
       z.object({
-        variantId: z.string(),
+        variantId: z.string().min(1).max(64),
         quantity: z.number().int().min(1).max(20),
       })
     )
-    .min(1),
+    .min(1)
+    .max(MAX_CHECKOUT_LINES),
 });
 
 export async function POST(request: Request) {
@@ -38,6 +44,21 @@ export async function POST(request: Request) {
       }, new Map<string, number>())
       .entries()
   ).map(([variantId, quantity]) => ({ variantId, quantity }));
+
+  if (mergedItems.length > MAX_CHECKOUT_LINES) {
+    return NextResponse.json(
+      { error: `Cart cannot exceed ${MAX_CHECKOUT_LINES} line items` },
+      { status: 400 }
+    );
+  }
+
+  const heldPreview = encodeHeldItems(mergedItems);
+  if (heldPreview.length > MAX_HELD_ITEMS_METADATA_CHARS) {
+    return NextResponse.json(
+      { error: "Cart is too large to check out. Remove some items and try again." },
+      { status: 400 }
+    );
+  }
 
   const variantIds = mergedItems.map((i) => i.variantId);
   const variants = await prisma.variant.findMany({

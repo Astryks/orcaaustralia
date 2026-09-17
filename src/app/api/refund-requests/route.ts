@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/lib/customerSession";
@@ -46,24 +47,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Item not found on this order." }, { status: 404 });
   }
 
-  const existing = await prisma.refundRequest.findFirst({
-    where: { orderItemId: item.id, status: { in: ["REQUESTED", "APPROVED"] } },
-  });
-  if (existing) {
-    return NextResponse.json(
-      { error: "A refund has already been requested for this item." },
-      { status: 400 }
-    );
+  // Atomic create: partial unique index RefundRequest_orderItemId_open_key
+  // rejects a second REQUESTED/APPROVED row for the same orderItemId (TOCTOU-safe).
+  let refundRequest;
+  try {
+    refundRequest = await prisma.refundRequest.create({
+      data: {
+        orderId: order.id,
+        orderItemId: item.id,
+        reason,
+        amountCents: item.unitPriceCents * item.quantity,
+      },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json(
+        { error: "A refund has already been requested for this item." },
+        { status: 400 }
+      );
+    }
+    throw err;
   }
-
-  const refundRequest = await prisma.refundRequest.create({
-    data: {
-      orderId: order.id,
-      orderItemId: item.id,
-      reason,
-      amountCents: item.unitPriceCents * item.quantity,
-    },
-  });
 
   try {
     const { error } = await getResend().emails.send({

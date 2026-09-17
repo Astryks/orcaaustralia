@@ -106,6 +106,8 @@ model MagicLinkRequest {
   lastRequestAt DateTime @default(now())
 }
 
+/// At most one REQUESTED/APPROVED row per orderItemId (partial unique index
+/// RefundRequest_orderItemId_open_key). DENIED is excluded so re-request after denial works.
 model RefundRequest {
   id            String       @id @default(cuid())
   order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
