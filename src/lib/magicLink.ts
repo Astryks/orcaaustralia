@@ -1,5 +1,5 @@
 import { sealData, unsealData } from "iron-session";
-import { customerSessionOptions } from "@/lib/customerSession";
+import { getCustomerSessionOptions } from "@/lib/customerSession";
 import { prisma } from "@/lib/prisma";
 
 const TTL_SECONDS = 30 * 60;
@@ -18,7 +18,7 @@ export async function createMagicLinkToken(email: string) {
     jti: crypto.randomUUID(),
   };
   return sealData(payload, {
-    password: customerSessionOptions.password,
+    password: getCustomerSessionOptions().password,
     ttl: TTL_SECONDS,
   });
 }
@@ -26,7 +26,7 @@ export async function createMagicLinkToken(email: string) {
 async function unsealMagicLinkToken(token: string) {
   try {
     const data = await unsealData<MagicLinkPayload>(token, {
-      password: customerSessionOptions.password,
+      password: getCustomerSessionOptions().password,
       ttl: TTL_SECONDS,
     });
     if (data.purpose !== "login" || !data.email || !data.jti) return null;
@@ -62,21 +62,39 @@ export async function consumeMagicLinkToken(token: string) {
   return data.email;
 }
 
-// Basic per-email cooldown so the login-link endpoint can't be used to spam
-// arbitrary inboxes. Returns true if a new link may be sent.
+/**
+ * Atomic per-email cooldown. Uses UPDATE ... WHERE lastRequestAt <= cutoff
+ * RETURNING so concurrent requests cannot both pass the window.
+ * Returns true if a new link may be sent.
+ */
 export async function claimMagicLinkRequestSlot(email: string) {
   const now = new Date();
   const cutoff = new Date(now.getTime() - REQUEST_COOLDOWN_SECONDS * 1000);
 
-  const existing = await prisma.magicLinkRequest.findUnique({ where: { email } });
-  if (existing && existing.lastRequestAt > cutoff) {
-    return false;
-  }
+  const updated = await prisma.$queryRaw<{ email: string }[]>`
+    UPDATE "MagicLinkRequest"
+    SET "lastRequestAt" = ${now}
+    WHERE email = ${email} AND "lastRequestAt" <= ${cutoff}
+    RETURNING email
+  `;
+  if (updated.length > 0) return true;
 
-  await prisma.magicLinkRequest.upsert({
-    where: { email },
-    create: { email, lastRequestAt: now },
-    update: { lastRequestAt: now },
-  });
-  return true;
+  try {
+    await prisma.magicLinkRequest.create({
+      data: { email, lastRequestAt: now },
+    });
+    return true;
+  } catch (err) {
+    // Unique constraint: row exists and is still inside the cooldown window
+    // (or a concurrent create won the race). Deny the slot.
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code?: string }).code === "P2002"
+    ) {
+      return false;
+    }
+    throw err;
+  }
 }

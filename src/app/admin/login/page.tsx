@@ -1,21 +1,40 @@
 import { redirect } from "next/navigation";
-import { timingSafeEqual } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
+import { headers } from "next/headers";
 import { getAdminSession } from "@/lib/session";
+import { rateLimit } from "@/lib/rateLimit";
 
+function hashPassword(value: string) {
+  return createHash("sha256").update(value, "utf8").digest();
+}
+
+/** Compare passwords via SHA-256 digests so length differences cannot leak via timing. */
 function passwordsMatch(a: string, b: string) {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
+  const hashA = hashPassword(a);
+  const hashB = hashPassword(b);
+  return timingSafeEqual(hashA, hashB);
 }
 
 async function login(formData: FormData) {
   "use server";
 
+  const hdrs = await headers();
+  const ip =
+    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    hdrs.get("x-real-ip")?.trim() ||
+    "unknown";
+  const limited = rateLimit(`admin-login:${ip}`, 10, 60_000);
+  if (!limited.ok) {
+    redirect("/admin/login?error=1");
+  }
+
   const password = String(formData.get("password") ?? "");
   const expected = process.env.ADMIN_PASSWORD ?? "";
 
-  if (!expected || !passwordsMatch(password, expected)) {
+  // Always hash-compare (even if ADMIN_PASSWORD is unset) so timing and the
+  // error redirect stay uniform — never reveal "misconfigured" vs "wrong".
+  const match = passwordsMatch(password, expected);
+  if (!expected || !match) {
     redirect("/admin/login?error=1");
   }
 

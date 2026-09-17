@@ -3,10 +3,15 @@ import { z } from "zod";
 import { claimMagicLinkRequestSlot, createMagicLinkToken } from "@/lib/magicLink";
 import { getResend } from "@/lib/resend";
 import { renderMagicLinkEmail } from "@/lib/orderEmail";
+import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const bodySchema = z.object({ email: z.string().email() });
 
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+  const limited = rateLimit(`magic-link:${ip}`, 5, 60_000);
+  if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
   const json = await request.json();
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
