@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { FLAT_SHIPPING_CENTS, FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/constants";
+import { encodeHeldItems, holdAllOrRollback, releaseAll, type HeldItem } from "@/lib/stockHold";
+import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const bodySchema = z.object({
   items: z
@@ -16,6 +18,10 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+  const limited = rateLimit(`checkout:${ip}`, 20, 60_000);
+  if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
   const json = await request.json();
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
@@ -35,7 +41,11 @@ export async function POST(request: Request) {
 
   const variantIds = mergedItems.map((i) => i.variantId);
   const variants = await prisma.variant.findMany({
-    where: { id: { in: variantIds }, active: true },
+    where: {
+      id: { in: variantIds },
+      active: true,
+      product: { active: true },
+    },
     include: { product: true },
   });
 
@@ -56,6 +66,25 @@ export async function POST(request: Request) {
       );
     }
     subtotalCents += variant.priceCents * item.quantity;
+  }
+
+  // Soft-hold: atomically reserve stock now so concurrent checkouts cannot oversell.
+  // Released on checkout.session.expired (or if Stripe session creation fails).
+  const holdItems: HeldItem[] = mergedItems.map((i) => ({
+    variantId: i.variantId,
+    quantity: i.quantity,
+  }));
+  const holdResult = await holdAllOrRollback(holdItems);
+  if (!holdResult.ok) {
+    const variant = variants.find((v) => v.id === holdResult.failedVariantId);
+    return NextResponse.json(
+      {
+        error: variant
+          ? `${variant.product.name} (${variant.size}) has limited stock`
+          : "One or more items have limited stock",
+      },
+      { status: 400 }
+    );
   }
 
   const shippingCents =
@@ -103,9 +132,14 @@ export async function POST(request: Request) {
       ],
       success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/checkout/cancel`,
+      metadata: {
+        stockHeld: "1",
+        heldItems: encodeHeldItems(holdItems),
+      },
     });
   } catch (err) {
     console.error("Stripe checkout session creation failed:", err);
+    await releaseAll(holdItems);
     return NextResponse.json(
       { error: "Payment provider is not configured correctly. Please try again later." },
       { status: 502 }
@@ -113,6 +147,7 @@ export async function POST(request: Request) {
   }
 
   if (!session.url) {
+    await releaseAll(holdItems);
     return NextResponse.json({ error: "Could not start checkout" }, { status: 500 });
   }
 

@@ -4,6 +4,11 @@ import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { getResend } from "@/lib/resend";
 import { renderOrderConfirmationEmail } from "@/lib/orderEmail";
+import {
+  atomicDecrementOrThrow,
+  decodeHeldItems,
+  releaseAll,
+} from "@/lib/stockHold";
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -96,21 +101,22 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    const decrementResults = await Promise.allSettled(
-      items
-        .filter((item) => item.variantId)
-        .map((item) =>
-          prisma.$executeRaw`UPDATE "Variant" SET stock = GREATEST(stock - ${item.quantity}, 0) WHERE id = ${item.variantId}`
-        )
-    );
-    decrementResults.forEach((result, i) => {
-      if (result.status === "rejected") {
-        console.error(
-          `Stock decrement failed for variant ${items.filter((it) => it.variantId)[i]?.variantId}:`,
-          result.reason
-        );
+    // Soft-hold already reserved stock at session create. Only fall back to
+    // atomic decrement for legacy sessions that pre-date holds.
+    const stockAlreadyHeld = session.metadata?.stockHeld === "1";
+    if (!stockAlreadyHeld) {
+      const toDecrement = items.filter((item) => item.variantId);
+      for (const item of toDecrement) {
+        try {
+          await atomicDecrementOrThrow(item.variantId!, item.quantity);
+        } catch (err) {
+          console.error(
+            `CRITICAL: atomic stock decrement failed for variant ${item.variantId} qty ${item.quantity}:`,
+            err
+          );
+        }
       }
-    });
+    }
 
     if (order.customerEmail && process.env.RESEND_API_KEY) {
       try {
@@ -145,6 +151,23 @@ export async function POST(request: Request) {
         // The order is already saved; don't fail the webhook (Stripe would
         // retry and, since the order now exists, never retry the email).
         console.error("Order confirmation email failed to send:", err);
+      }
+    }
+  }
+
+  if (event.type === "checkout.session.expired") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.metadata?.stockHeld === "1") {
+      const held = decodeHeldItems(session.metadata.heldItems);
+      if (held.length > 0) {
+        try {
+          await releaseAll(held);
+        } catch (err) {
+          console.error(
+            `CRITICAL: failed to restore soft-held stock for expired session ${session.id}:`,
+            err
+          );
+        }
       }
     }
   }

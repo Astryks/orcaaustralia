@@ -1,8 +1,5 @@
 import { formatCents } from "@/lib/money";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://orcaaustralia.com";
-const LOGO_URL = `${SITE_URL}/orca-icon.png`;
-
 function escapeHtml(input: string) {
   return input
     .replace(/&/g, "&amp;")
@@ -10,6 +7,27 @@ function escapeHtml(input: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+/** Escape for use inside HTML attribute values (href/src). */
+function escapeAttr(input: string) {
+  return escapeHtml(input).replace(/'/g, "&#39;");
+}
+
+/** Allow only http(s) URLs for email href/src — rejects javascript:, data:, etc. */
+function safeHttpUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+const SITE_URL =
+  safeHttpUrl(process.env.NEXT_PUBLIC_SITE_URL) ?? "https://orcaaustralia.com";
+const LOGO_URL = `${SITE_URL}/orca-icon.png`;
 
 export interface OrderEmailItem {
   productName: string;
@@ -24,7 +42,7 @@ function emailShell(bodyHtml: string) {
   <div style="background:#f5f2ea;padding:32px 16px;font-family:Helvetica,Arial,sans-serif;">
     <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e2da;">
       <div style="background:#0f2438;padding:28px 32px;text-align:center;">
-        <img src="${LOGO_URL}" width="36" height="36" alt="Orca Australia" style="display:inline-block;vertical-align:middle;" />
+        <img src="${escapeAttr(LOGO_URL)}" width="36" height="36" alt="Orca Australia" style="display:inline-block;vertical-align:middle;" />
         <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-size:18px;letter-spacing:2px;color:#ffffff;font-weight:600;">
           ORCA <span style="font-weight:300;">AUSTRALIA</span>
         </span>
@@ -38,7 +56,7 @@ function emailShell(bodyHtml: string) {
         </p>
         <p style="margin:8px 0 0;font-size:11px;color:#10203a66;">
           Orca Australia, part of the Astryks Group &middot;
-          <a href="${SITE_URL}" style="color:#10203a66;">orcaaustralia.com</a>
+          <a href="${escapeAttr(SITE_URL)}" style="color:#10203a66;">orcaaustralia.com</a>
         </p>
       </div>
     </div>
@@ -46,19 +64,23 @@ function emailShell(bodyHtml: string) {
 }
 
 function ctaButton(href: string, label: string) {
+  const safe = safeHttpUrl(href);
+  if (!safe) return "";
   return `
     <div style="margin-top:24px;text-align:center;">
-      <a href="${href}" style="display:inline-block;background:#0f2438;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:12px 28px;border-radius:999px;">
-        ${label}
+      <a href="${escapeAttr(safe)}" style="display:inline-block;background:#0f2438;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:12px 28px;border-radius:999px;">
+        ${escapeHtml(label)}
       </a>
     </div>`;
 }
 
 function secondaryButton(href: string, label: string) {
+  const safe = safeHttpUrl(href);
+  if (!safe) return "";
   return `
     <div style="margin-top:12px;text-align:center;">
-      <a href="${href}" style="display:inline-block;background:#ffffff;color:#0f2438;text-decoration:none;font-size:13px;font-weight:600;padding:11px 28px;border-radius:999px;border:1px solid #0f2438;">
-        ${label}
+      <a href="${escapeAttr(safe)}" style="display:inline-block;background:#ffffff;color:#0f2438;text-decoration:none;font-size:13px;font-weight:600;padding:11px 28px;border-radius:999px;border:1px solid #0f2438;">
+        ${escapeHtml(label)}
       </a>
     </div>`;
 }
@@ -70,9 +92,12 @@ function itemRows(items: OrderEmailItem[]) {
       <tr>
         <td style="padding:12px 0;border-bottom:1px solid #eeece4;" width="56">
           ${
-            item.imageUrl
-              ? `<img src="${item.imageUrl}" width="48" height="48" alt="" style="border-radius:6px;object-fit:cover;display:block;" />`
-              : `<div style="width:48px;height:48px;border-radius:6px;background:#f5f2ea;"></div>`
+            (() => {
+              const img = safeHttpUrl(item.imageUrl);
+              return img
+                ? `<img src="${escapeAttr(img)}" width="48" height="48" alt="" style="border-radius:6px;object-fit:cover;display:block;" />`
+                : `<div style="width:48px;height:48px;border-radius:6px;background:#f5f2ea;"></div>`;
+            })()
           }
         </td>
         <td style="padding:12px 0 12px 12px;border-bottom:1px solid #eeece4;color:#10203a;font-size:14px;">

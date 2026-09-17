@@ -1,6 +1,25 @@
 # Orca Australia — Setup Progress
 
-_Last updated: 2026-09-01. I'll keep this file up to date as we go — check here any time for where things stand._
+_Last updated: 2026-09-17. I'll keep this file up to date as we go — check here any time for where things stand._
+
+## 🔒 Security audit H1/H2 + mediums — 2026-09-17
+
+Local fix branch `fix/orca-audit-h1-h2-security` (Cloud Agents unavailable; implemented on box).
+
+**H1 — Order lookup over-disclosure:** `/api/orders/lookup` previously returned *all* orders for an email once any last-8 order id matched. Now returns only the single matching order. Added in-memory IP rate limiting (no Upstash in deps).
+
+**H2 — Stock oversell:** Replaced `GREATEST(stock - qty, 0)` webhook path. Checkout now soft-holds stock with atomic `UPDATE … SET stock = stock - qty WHERE stock >= qty RETURNING`; Stripe session metadata records the hold; `checkout.session.expired` restores stock; `checkout.session.completed` skips a second decrement when held (legacy sessions still use atomic decrement and fail loudly on 0 rows). Ensure the Stripe webhook endpoint listens for `checkout.session.expired` as well as `checkout.session.completed`.
+
+**Mediums in the same branch:**
+- `getProductBySlug` + checkout require `Product.active`
+- Rate limits on lookup / contact / magic-link / admin login / checkout
+- Admin password: SHA-256 then `timingSafeEqual`; uniform `?error=1` responses (incl. rate limit / unset password)
+- Admin upload: magic-byte MIME sniff (jpeg/png/webp/avif), ignore client type for storage
+- Order emails: `safeHttpUrl` + attribute escaping for href/src
+- Magic-link cooldown: atomic `UPDATE … RETURNING` (no read-then-write race)
+- `CUSTOMER_SESSION_SECRET` required ≥32 chars — no admin/empty fallback; documented in `.env.example`
+
+**Ops follow-up:** set `CUSTOMER_SESSION_SECRET` (≥32) on Vercel if missing; confirm Stripe webhook includes `checkout.session.expired`.
 
 ## 🖼️ Product photo gallery, Lock-In Pouch thumbnail — 2026-09-01
 

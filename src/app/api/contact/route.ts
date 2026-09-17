@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getResend } from "@/lib/resend";
+import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const bodySchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -10,6 +11,10 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+  const limited = rateLimit(`contact:${ip}`, 5, 60_000);
+  if (!limited.ok) return rateLimitResponse(limited.retryAfterSec);
+
   const json = await request.json();
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
