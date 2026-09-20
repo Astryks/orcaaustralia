@@ -93,7 +93,7 @@ Ran a thorough security/correctness audit across payments, auth, email, admin, a
 - **GitHub → Vercel auto-deploy connected**: pushing to `master` deploys automatically — no more manual `vercel --prod`.
 - **Bugs found & fixed during audits**: Resend's SDK returns `{ data, error }` instead of throwing on failures — all email send points were silently "succeeding" even when nothing sent; now properly checked everywhere. A refund-approval failure (e.g. bad Stripe key) used to crash the whole admin page — now shows a friendly inline error instead. Also fixed: duplicated page titles, several form labels missing proper accessibility associations, non-square logo icons.
 - **Small conversion/legitimacy wins**: Stripe promo codes enabled at checkout, Open Graph + per-product SEO metadata, product badges.
-- **GitHub repo**: https://github.com/Siddharth09/orcaaustralia (branch `master`), fully up to date.
+- **GitHub repo**: https://github.com/Astryks/orcaaustralia (branch `master`), fully up to date.
 - **Database (Neon)**: project `orca-australia` in Sydney (`ap-southeast-2`).
 - **Vercel project**: `astryks/orca-australia`, with `DATABASE_URL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `BLOB_READ_WRITE_TOKEN`, `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `STRIPE_SECRET_KEY` (live), `STRIPE_WEBHOOK_SECRET` (live) all set.
 - **Vercel Blob storage**: holds all product photos.

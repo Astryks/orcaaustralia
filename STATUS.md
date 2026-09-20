@@ -4,7 +4,7 @@ _Last updated: 2026-09-17 (AEST). Single source of truth for “where things sta
 
 ## Repo
 
-- **GitHub:** https://github.com/Siddharth09/orcaaustralia  
+- **GitHub:** https://github.com/Astryks/orcaaustralia  
 - **Default branch:** `master`  
 - **Live:** orcaaustralia.com / Vercel `orca-australia`
 
