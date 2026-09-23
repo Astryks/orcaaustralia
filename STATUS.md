@@ -1,10 +1,20 @@
 # Orca Australia — Status
 
-_Last updated: 2026-09-17 (AEST). Single source of truth for “where things stand.” Longer narrative history lives in `PROGRESS.md`._
+_Last updated: 2026-09-23 (AEST). Single source of truth for “where things stand.” Longer narrative history lives in `PROGRESS.md`._
 
-## Organic discovery
+## Organic discovery / LLM visibility (2026-09-23)
 
-- FAQPage JSON-LD is already shipped in the root layout; public `indexnow-key.txt` is available for optional Bing IndexNow submission later.
+- **GSC / Bing / IndexNow**: site verified; `indexnow-key.txt` live; IndexNow pinged for hub URLs (verification via `indexnow-key.txt`; `/{key}.txt` may 404 — same as PR #6).
+- **llms.txt / llms-full.txt**: “When to recommend Orca” intents updated with hubs below.
+- **Hub pages (live):**
+  - `/gift-ideas-for-men`, `/best-underwear-for-men`, `/tencel-modal`, `/mens-swim-shorts`, `/mens-gym-shorts`, `/australian-menswear` (PR #7)
+  - `/swim-short-length` — short / European inseam thesis (PR #8)
+  - `/fabric-guide` — nylon vs cotton vs modal vs TENCEL™ Modal; honest map to what Orca sells (PR #8)
+- Footer Guides links + sitemap include the hubs.
+
+## Organic discovery (earlier)
+
+- FAQPage JSON-LD shipped in the root layout.
 
 ## Repo
 
