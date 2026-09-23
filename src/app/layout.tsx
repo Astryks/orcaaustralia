@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  verification: {
+    google: "hjcqJSNgNpTOrJbZOKYqSWQ3CYo8SNmD1eHRFRuQ6ho",
+  },
   // Always canonical production domain — never *.vercel.app.
   metadataBase: new URL(SITE_URL),
   title: {
