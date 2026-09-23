@@ -1,5 +1,15 @@
 # Orca Australia
 
+**[orcaaustralia.com](https://orcaaustralia.com)** — Men's swim shorts & boxer briefs.
+
+Orca Australia makes men's swim shorts and boxer briefs built for comfort in and out of the water — practical fits for training, travel, and everyday wear.
+
+> Shop: [https://orcaaustralia.com](https://orcaaustralia.com)
+
+---
+
+## Store codebase
+
 E-commerce store for Orca Australia — men's swim shorts and Tencel modal boxer briefs. Built with Next.js, Prisma/Postgres, Stripe Checkout, Resend, and Vercel Blob.
 
 ## What's included
