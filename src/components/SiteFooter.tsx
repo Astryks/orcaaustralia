@@ -70,6 +70,22 @@ export function SiteFooter() {
                   Best underwear for men
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/swim-short-length"
+                  className="hover:text-navy hover:underline"
+                >
+                  Swim short length
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/fabric-guide"
+                  className="hover:text-navy hover:underline"
+                >
+                  Fabric guide
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
