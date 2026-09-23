@@ -2,6 +2,10 @@
 
 _Last updated: 2026-09-17 (AEST). Single source of truth for “where things stand.” Longer narrative history lives in `PROGRESS.md`._
 
+## Organic discovery
+
+- FAQPage JSON-LD is already shipped in the root layout; public `indexnow-key.txt` is available for optional Bing IndexNow submission later.
+
 ## Repo
 
 - **GitHub:** https://github.com/Astryks/orcaaustralia  
