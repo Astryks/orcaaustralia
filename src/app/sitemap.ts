@@ -10,6 +10,8 @@ const HUB_ROUTES = [
   "/mens-swim-shorts",
   "/mens-gym-shorts",
   "/australian-menswear",
+  "/swim-short-length",
+  "/fabric-guide",
 ] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
