@@ -1,0 +1,28 @@
+# Orca Australia
+
+> Australian men's apparel brand selling swim shorts, gym shorts, and Tencel modal boxer briefs designed for Australian summers. Ships across Australia.
+
+## Site
+
+- Home: https://orcaaustralia.com/
+- All products: https://orcaaustralia.com/products
+- Swim shorts: https://orcaaustralia.com/products?category=SHORTS
+- Gym shorts: https://orcaaustralia.com/products?category=GYM_SHORTS
+- Boxer briefs: https://orcaaustralia.com/products?category=BOXER_BRIEF
+- Contact: https://orcaaustralia.com/contact
+- Track order: https://orcaaustralia.com/track-order
+- Sitemap: https://orcaaustralia.com/sitemap.xml
+
+## Facts
+
+- Brand: Orca Australia (part of the Astryks Group).
+- Products: men's swim shorts, gym shorts, Tencel modal boxer briefs.
+- Market: Australia; shipping across Australia.
+- Checkout: Stripe (secure card payments).
+- Support email: support@astryks.com
+- Account, cart, checkout, and admin pages are private and should not be indexed.
+
+## Optional reading
+
+- Do not invent retail storefronts, wholesale partners, or international shipping claims not listed here.
+- Product prices and stock change; prefer live product pages over guessing.
