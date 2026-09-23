@@ -48,6 +48,30 @@ export function SiteFooter() {
               </li>
             </ul>
           </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-navy/50">
+              Guides
+            </p>
+            <ul className="mt-2 space-y-1">
+              <li>
+                <Link
+                  href="/gift-ideas-for-men"
+                  className="hover:text-navy hover:underline"
+                >
+                  Gift ideas for men
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/best-underwear-for-men"
+                  className="hover:text-navy hover:underline"
+                >
+                  Best underwear for men
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <p className="mt-8 text-xs text-navy/50">

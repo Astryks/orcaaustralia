@@ -3,6 +3,15 @@ import { getActiveProducts } from "@/lib/products";
 
 const BASE = "https://orcaaustralia.com";
 
+const HUB_ROUTES = [
+  "/gift-ideas-for-men",
+  "/best-underwear-for-men",
+  "/tencel-modal",
+  "/mens-swim-shorts",
+  "/mens-gym-shorts",
+  "/australian-menswear",
+] as const;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
@@ -30,6 +39,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.8,
     },
+    ...HUB_ROUTES.map((path) => ({
+      url: `${BASE}${path}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
     {
       url: `${BASE}/contact`,
       lastModified: new Date(),
